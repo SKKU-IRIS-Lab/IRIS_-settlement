@@ -135,6 +135,31 @@ button {
   font-size: 0.86rem;
 }
 
+.share-hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.share-link-btn {
+  display: inline-flex;
+  min-height: 42px;
+  max-width: 180px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 0 13px;
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
+}
+
 .icon-btn {
   display: inline-grid;
   width: 42px;
@@ -608,6 +633,15 @@ textarea {
 @media (max-width: 460px) {
   .app-shell {
     padding-inline: 12px;
+  }
+
+  .topbar {
+    align-items: flex-start;
+  }
+
+  .share-link-btn {
+    max-width: 116px;
+    padding-inline: 10px;
   }
 
   .setup-screen {
