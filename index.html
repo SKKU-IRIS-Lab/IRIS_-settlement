@@ -112,6 +112,12 @@
             <select id="expenseCurrency">
               <option value="KRW">KRW</option>
               <option value="USD">USD</option>
+              <option value="JPY">JPY</option>
+              <option value="EUR">EUR</option>
+              <option value="CNY">CNY</option>
+              <option value="TWD">TWD</option>
+              <option value="HKD">HKD</option>
+              <option value="SGD">SGD</option>
             </select>
           </label>
         </div>
@@ -119,6 +125,10 @@
           환율
           <input id="expenseRate" type="number" min="0" step="0.01" />
         </label>
+        <div class="rate-actions">
+          <button id="fetchRateBtn" class="ghost-btn" type="button">환율 가져오기</button>
+          <span id="rateStatus" class="rate-status"></span>
+        </div>
         <label>
           결제한 사람
           <select id="expensePayer" required></select>

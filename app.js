@@ -12,6 +12,7 @@ const FIREBASE_DB_URL = "https://iris-settlement-default-rtdb.firebaseio.com";
 
 const palette = ["#d87963", "#80b86e", "#70a8d8", "#b893d8", "#d6b84f", "#6fb9ad", "#df8f9c", "#9b9f6a"];
 const storagePrefix = "settle-app:";
+const exchangeApiBase = "https://api.frankfurter.dev/v2";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -182,10 +183,15 @@ function wireEvents() {
   });
 
   $("#expenseCurrency").addEventListener("change", () => {
-    if ($("#expenseCurrency").value !== state.meta.baseCurrency && !$("#expenseRate").value) {
-      $("#expenseRate").value = state.meta.defaultExchangeRate;
+    if ($("#expenseCurrency").value !== state.meta.baseCurrency) {
+      $("#expenseRate").value = "";
+      $("#rateStatus").textContent = "";
     }
+    updateRateControls();
+    maybeFetchRateForForm();
   });
+  $("#expenseDate").addEventListener("change", () => maybeFetchRateForForm());
+  $("#fetchRateBtn").addEventListener("click", () => fetchRateForForm({ force: true }));
 }
 
 function switchTab(tab) {
@@ -485,11 +491,14 @@ function openExpenseDialog(id = "") {
   $("#expenseAmount").value = expense?.amount || "";
   $("#expenseCurrency").value = expense?.currency || state.meta.baseCurrency;
   $("#expenseRate").value = expense?.exchangeRate || state.meta.defaultExchangeRate;
+  $("#rateStatus").textContent = expense?.exchangeRateSource ? `고정됨 · ${expense.exchangeRateSource}` : "";
   $("#expenseNote").value = expense?.note || "";
   $("#deleteExpenseBtn").style.visibility = expense ? "visible" : "hidden";
   renderMemberSelect($("#expensePayer"), expense?.payerId);
   renderParticipantChecks(expense?.participantIds || state.members.map((item) => item.id));
+  updateRateControls();
   els.expenseDialog.showModal();
+  if (!expense) maybeFetchRateForForm();
 }
 
 function renderMemberSelect(select, selectedId) {
@@ -529,6 +538,8 @@ function onExpenseSubmit(event) {
     amount: Number($("#expenseAmount").value),
     currency: $("#expenseCurrency").value,
     exchangeRate: Number($("#expenseRate").value || 1),
+    exchangeRateSource: $("#expenseCurrency").value === state.meta.baseCurrency ? "base" : "Frankfurter",
+    exchangeRateFetchedAt: $("#expenseCurrency").value === state.meta.baseCurrency ? "" : new Date().toISOString(),
     payerId: $("#expensePayer").value,
     participantIds,
     note: $("#expenseNote").value.trim(),
@@ -592,6 +603,66 @@ function deleteCurrentMember() {
   saveState();
   els.memberDialog.close();
   render();
+}
+
+function updateRateControls() {
+  const currency = $("#expenseCurrency").value;
+  const isBaseCurrency = currency === state.meta.baseCurrency;
+  $("#expenseRate").disabled = isBaseCurrency;
+  $("#fetchRateBtn").disabled = isBaseCurrency;
+  if (isBaseCurrency) {
+    $("#expenseRate").value = 1;
+    $("#rateStatus").textContent = "KRW 기준";
+  } else if (!$("#rateStatus").textContent) {
+    $("#rateStatus").textContent = "환율을 가져오거나 직접 입력";
+  }
+}
+
+function maybeFetchRateForForm() {
+  const currency = $("#expenseCurrency").value;
+  if (currency === state.meta.baseCurrency) return;
+  if ($("#expenseRate").value) return;
+  fetchRateForForm();
+}
+
+async function fetchRateForForm({ force = false } = {}) {
+  const currency = $("#expenseCurrency").value;
+  if (currency === state.meta.baseCurrency) {
+    updateRateControls();
+    return;
+  }
+  if (!force && $("#expenseRate").value) return;
+
+  $("#rateStatus").textContent = "환율 가져오는 중";
+  $("#fetchRateBtn").disabled = true;
+  try {
+    const rate = await fetchExchangeRate(currency, state.meta.baseCurrency);
+    $("#expenseRate").value = roundRate(rate);
+    $("#rateStatus").textContent = `고정됨 · ${currency}->${state.meta.baseCurrency}`;
+  } catch (error) {
+    console.error(error);
+    $("#rateStatus").textContent = "환율 조회 실패";
+    showToast("환율을 직접 입력하세요");
+  } finally {
+    $("#fetchRateBtn").disabled = false;
+    updateRateControls();
+  }
+}
+
+async function fetchExchangeRate(base, quote) {
+  const response = await fetch(`${exchangeApiBase}/rate/${encodeURIComponent(base)}/${encodeURIComponent(quote)}`);
+  if (!response.ok) {
+    throw new Error(`Exchange rate request failed: ${response.status}`);
+  }
+  const data = await response.json();
+  if (!Number(data.rate)) {
+    throw new Error("Exchange rate response did not include a rate");
+  }
+  return Number(data.rate);
+}
+
+function roundRate(value) {
+  return Math.round(Number(value) * 10000) / 10000;
 }
 
 function amountKrw(expense) {
