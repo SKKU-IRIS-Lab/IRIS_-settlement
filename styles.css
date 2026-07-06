@@ -39,65 +39,6 @@ button {
   cursor: pointer;
 }
 
-.setup-screen {
-  display: grid;
-  min-height: 100dvh;
-  place-items: center;
-  padding: 18px 16px;
-}
-
-.setup-screen[hidden] {
-  display: none;
-}
-
-.setup-panel {
-  display: grid;
-  width: min(100%, 560px);
-  gap: 14px;
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--paper);
-  box-shadow: var(--shadow);
-}
-
-.setup-copy h1 {
-  margin: 4px 0 0;
-  font-size: clamp(1.7rem, 8vw, 2.45rem);
-  line-height: 1.08;
-}
-
-.setup-members-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 4px;
-}
-
-.setup-member-rows {
-  display: grid;
-  gap: 9px;
-}
-
-.setup-member-row {
-  display: grid;
-  grid-template-columns: 1fr 42px;
-  gap: 8px;
-  align-items: center;
-}
-
-.setup-member-fields {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
-
-.setup-submit {
-  width: 100%;
-  margin-top: 4px;
-}
-
 .app-shell {
   width: min(100%, 760px);
   min-height: 100dvh;
@@ -537,19 +478,6 @@ textarea {
 @media (max-width: 460px) {
   .app-shell {
     padding-inline: 12px;
-  }
-
-  .setup-screen {
-    align-items: start;
-    padding: 12px;
-  }
-
-  .setup-panel {
-    padding: 14px;
-  }
-
-  .setup-member-fields {
-    grid-template-columns: 1fr;
   }
 
   .summary-grid {
