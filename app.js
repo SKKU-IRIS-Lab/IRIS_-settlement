@@ -749,10 +749,11 @@ async function fetchRateForForm({ force = false } = {}) {
   $("#rateStatus").textContent = "환율 가져오는 중";
   $("#fetchRateBtn").disabled = true;
   try {
-    const result = await fetchExchangeRate(currency, state.meta.baseCurrency, $("#expenseDate").value);
+    const lookupDate = previousDate($("#expenseDate").value);
+    const result = await fetchExchangeRate(currency, state.meta.baseCurrency, lookupDate);
     $("#expenseRate").value = roundRate(result.rate);
     $("#expenseRate").dataset.rateDate = result.date;
-    $("#rateStatus").textContent = `고정됨 · ${result.date}`;
+    $("#rateStatus").textContent = `고정됨 · ${result.date} 기준`;
   } catch (error) {
     console.error(error);
     $("#rateStatus").textContent = "환율 조회 실패";
@@ -781,6 +782,12 @@ async function fetchExchangeRate(base, quote, date) {
 
 function roundRate(value) {
   return Math.round(Number(value) * 10000) / 10000;
+}
+
+function previousDate(dateValue) {
+  const date = dateValue ? new Date(`${dateValue}T00:00:00`) : new Date();
+  date.setDate(date.getDate() - 1);
+  return date.toISOString().slice(0, 10);
 }
 
 function parseManualShares(participantIds) {
