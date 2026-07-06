@@ -125,10 +125,10 @@ function normalizeState(value) {
 function saveState() {
   state.meta.updatedAt = Date.now();
   if (dbRef && dbApi && remoteReady) {
-    dbApi.set(dbRef, state);
-    return;
+    return dbApi.set(dbRef, state);
   }
   localStorage.setItem(storageKey(), JSON.stringify(state));
+  return Promise.resolve();
 }
 
 function wireEvents() {
@@ -202,7 +202,7 @@ function renderSetup() {
   els.setupScreen.hidden = false;
   els.appShell.hidden = true;
   if (!els.setupTripName.value) {
-    els.setupTripName.value = state.meta.name || "";
+    els.setupTripName.value = state.meta.name || "새 정산";
   }
   if (state.members.length) {
     setupDraftMembers = state.members.map((item) => item.name);
@@ -264,8 +264,11 @@ function onSetupSubmit(event) {
     expenses: [],
     settled: {},
   };
-  saveState();
   render();
+  Promise.resolve(saveState()).catch((error) => {
+    console.error(error);
+    showToast("Firebase 저장을 확인하세요");
+  });
   showToast("정산을 시작했습니다");
 }
 
