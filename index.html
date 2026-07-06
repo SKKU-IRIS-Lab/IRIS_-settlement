@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f7f5ef" />
+    <title>정산</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <input id="tripName" class="trip-name" aria-label="모임 이름" maxlength="32" />
+          <div id="syncState" class="sync-state">로컬 저장</div>
+        </div>
+        <button id="copyLinkBtn" class="icon-btn" type="button" title="링크 복사" aria-label="링크 복사">
+          ↗
+        </button>
+      </header>
+
+      <main>
+        <section class="summary-grid" aria-label="요약">
+          <div class="metric metric-dark">
+            <span>총 지출</span>
+            <strong id="totalSpend">₩0</strong>
+          </div>
+          <div class="metric">
+            <span>정산 금액</span>
+            <strong id="totalTransfer">₩0</strong>
+          </div>
+          <div class="metric">
+            <span>내역</span>
+            <strong id="expenseCount">0건</strong>
+          </div>
+        </section>
+
+        <nav class="tabs" aria-label="화면">
+          <button class="tab active" type="button" data-tab="expenses">지출</button>
+          <button class="tab" type="button" data-tab="settlement">정산</button>
+          <button class="tab" type="button" data-tab="members">멤버</button>
+        </nav>
+
+        <section id="expensesPanel" class="panel active" aria-label="지출">
+          <div class="section-head">
+            <h2>지출</h2>
+            <button id="addExpenseBtn" class="primary-btn" type="button">+ 지출</button>
+          </div>
+          <div id="expenseList" class="list"></div>
+        </section>
+
+        <section id="settlementPanel" class="panel" aria-label="정산">
+          <div class="section-head">
+            <h2>정산</h2>
+            <button id="clearSettledBtn" class="ghost-btn" type="button">초기화</button>
+          </div>
+          <div id="transferList" class="list"></div>
+          <div id="balanceList" class="balance-list"></div>
+        </section>
+
+        <section id="membersPanel" class="panel" aria-label="멤버">
+          <div class="section-head">
+            <h2>멤버</h2>
+            <button id="addMemberBtn" class="primary-btn" type="button">+ 멤버</button>
+          </div>
+          <div id="memberList" class="list"></div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="expenseDialog" class="modal">
+      <form id="expenseForm" method="dialog" class="modal-body">
+        <div class="modal-head">
+          <h2 id="expenseDialogTitle">지출 추가</h2>
+          <button class="icon-btn" type="button" data-close="expenseDialog" aria-label="닫기">×</button>
+        </div>
+        <input id="expenseId" type="hidden" />
+        <label>
+          날짜
+          <input id="expenseDate" type="date" required />
+        </label>
+        <label>
+          항목
+          <input id="expenseTitle" type="text" maxlength="40" required placeholder="택시, 숙소, 식사" />
+        </label>
+        <div class="form-row">
+          <label>
+            금액
+            <input id="expenseAmount" type="number" min="0" step="0.01" required />
+          </label>
+          <label>
+            통화
+            <select id="expenseCurrency">
+              <option value="KRW">KRW</option>
+              <option value="USD">USD</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          환율
+          <input id="expenseRate" type="number" min="0" step="0.01" />
+        </label>
+        <label>
+          결제한 사람
+          <select id="expensePayer" required></select>
+        </label>
+        <fieldset>
+          <legend>나눌 사람</legend>
+          <div id="participantChecks" class="check-grid"></div>
+        </fieldset>
+        <label>
+          메모
+          <textarea id="expenseNote" rows="2" maxlength="120"></textarea>
+        </label>
+        <div class="modal-actions">
+          <button id="deleteExpenseBtn" class="danger-btn" type="button">삭제</button>
+          <button class="primary-btn" type="submit">저장</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="memberDialog" class="modal">
+      <form id="memberForm" method="dialog" class="modal-body">
+        <div class="modal-head">
+          <h2 id="memberDialogTitle">멤버 추가</h2>
+          <button class="icon-btn" type="button" data-close="memberDialog" aria-label="닫기">×</button>
+        </div>
+        <input id="memberId" type="hidden" />
+        <label>
+          이름
+          <input id="memberName" type="text" maxlength="20" required />
+        </label>
+        <label>
+          은행
+          <input id="memberBank" type="text" maxlength="24" />
+        </label>
+        <label>
+          계좌번호
+          <input id="memberAccount" type="text" maxlength="40" inputmode="numeric" />
+        </label>
+        <label>
+          색상
+          <input id="memberColor" type="color" />
+        </label>
+        <div class="modal-actions">
+          <button id="deleteMemberBtn" class="danger-btn" type="button">삭제</button>
+          <button class="primary-btn" type="submit">저장</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
