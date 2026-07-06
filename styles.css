@@ -135,17 +135,26 @@ button {
   font-size: 0.86rem;
 }
 
+.share-block {
+  display: grid;
+  max-width: 180px;
+  flex: 0 0 auto;
+  gap: 5px;
+  justify-items: end;
+}
+
 .share-hint {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 700;
+  line-height: 1.25;
+  text-align: right;
 }
 
 .share-link-btn {
   display: inline-flex;
   min-height: 42px;
-  max-width: 180px;
-  flex: 0 0 auto;
+  width: 100%;
   align-items: center;
   justify-content: center;
   gap: 7px;
@@ -639,8 +648,11 @@ textarea {
     align-items: flex-start;
   }
 
-  .share-link-btn {
+  .share-block {
     max-width: 116px;
+  }
+
+  .share-link-btn {
     padding-inline: 10px;
   }
 
