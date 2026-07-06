@@ -1,5 +1,14 @@
-const FIREBASE_CONFIG = null;
-const FIREBASE_DB_URL = "";
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCvRlGwvHuiwcXuJQLFKzzrttOKTT0pS-s",
+  authDomain: "iris-settlement.firebaseapp.com",
+  databaseURL: "https://iris-settlement-default-rtdb.firebaseio.com",
+  projectId: "iris-settlement",
+  storageBucket: "iris-settlement.firebasestorage.app",
+  messagingSenderId: "163710588431",
+  appId: "1:163710588431:web:a4c697ead3b2453347357a",
+  measurementId: "G-MZ0FSEYY0C",
+};
+const FIREBASE_DB_URL = "https://iris-settlement-default-rtdb.firebaseio.com";
 
 const palette = ["#d87963", "#80b86e", "#70a8d8", "#b893d8", "#d6b84f", "#6fb9ad", "#df8f9c", "#9b9f6a"];
 const storagePrefix = "settle-app:";
