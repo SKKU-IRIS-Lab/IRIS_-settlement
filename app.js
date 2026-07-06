@@ -99,13 +99,13 @@ async function initStorage() {
       dbRef = db.ref(db.getDatabase(app), `trips/${tripId}`);
       db.onValue(dbRef, (snapshot) => {
         const value = snapshot.val();
+        remoteReady = true;
         if (value) {
           state = normalizeState(value);
         } else {
           state = createDefaultState();
           saveState();
         }
-        remoteReady = true;
         els.syncState.textContent = "Firebase 실시간 동기화";
         render();
       });
