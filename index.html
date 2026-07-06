@@ -135,7 +135,19 @@
         </label>
         <fieldset>
           <legend>나눌 사람</legend>
+          <div class="split-mode">
+            <label class="mode-pill">
+              <input type="radio" name="splitMode" value="equal" checked />
+              <span>균등 분할</span>
+            </label>
+            <label class="mode-pill">
+              <input type="radio" name="splitMode" value="manual" />
+              <span>수기 금액</span>
+            </label>
+          </div>
           <div id="participantChecks" class="check-grid"></div>
+          <div id="manualShares" class="manual-shares" hidden></div>
+          <div id="shareStatus" class="share-status"></div>
         </fieldset>
         <label>
           메모

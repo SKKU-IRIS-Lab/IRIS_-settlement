@@ -501,6 +501,61 @@ textarea {
   gap: 8px;
 }
 
+.split-mode {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.mode-pill {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.86rem;
+}
+
+.mode-pill input {
+  width: 16px;
+  min-height: 16px;
+}
+
+.manual-shares {
+  display: grid;
+  gap: 8px;
+}
+
+.share-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.8fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.share-name {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.share-status {
+  min-height: 18px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.share-status.error {
+  color: var(--red);
+}
+
 .check-tile {
   display: flex;
   align-items: center;
@@ -577,6 +632,10 @@ textarea {
   }
 
   .check-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .share-row {
     grid-template-columns: 1fr;
   }
 }

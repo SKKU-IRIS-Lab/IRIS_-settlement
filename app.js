@@ -192,6 +192,13 @@ function wireEvents() {
   });
   $("#expenseDate").addEventListener("change", () => maybeFetchRateForForm());
   $("#fetchRateBtn").addEventListener("click", () => fetchRateForForm({ force: true }));
+  $$("input[name='splitMode']").forEach((input) => {
+    input.addEventListener("change", () => {
+      renderManualShares();
+      updateShareStatus();
+    });
+  });
+  $("#expenseAmount").addEventListener("input", updateShareStatus);
 }
 
 function switchTab(tab) {
@@ -320,6 +327,7 @@ function renderExpenses() {
             <div class="amount">${money(amount)}</div>
           </div>
           <div class="chips">
+            ${expense.splitMode === "manual" ? `<span class="chip">수기 분배</span>` : ""}
             ${participants.map((item) => `<span class="chip" style="background:${softColor(item.color)}">${escapeHtml(item.name)}</span>`).join("")}
           </div>
           <div class="transfer-actions">
@@ -439,9 +447,8 @@ function calculateSettlement() {
     if (!participants.length || balances[expense.payerId] === undefined) return;
     totalSpend += amount;
     balances[expense.payerId] += amount;
-    const share = amount / participants.length;
-    participants.forEach((id) => {
-      balances[id] -= share;
+    getExpenseSharesKrw(expense, participants).forEach(({ memberId, amount: shareAmount }) => {
+      balances[memberId] -= shareAmount;
     });
   });
 
@@ -494,8 +501,11 @@ function openExpenseDialog(id = "") {
   $("#rateStatus").textContent = expense?.exchangeRateSource ? `고정됨 · ${expense.exchangeRateSource}` : "";
   $("#expenseNote").value = expense?.note || "";
   $("#deleteExpenseBtn").style.visibility = expense ? "visible" : "hidden";
+  setSplitMode(expense?.splitMode || "equal");
   renderMemberSelect($("#expensePayer"), expense?.payerId);
   renderParticipantChecks(expense?.participantIds || state.members.map((item) => item.id));
+  renderManualShares(expense?.shares || {});
+  updateShareStatus();
   updateRateControls();
   els.expenseDialog.showModal();
   if (!expense) maybeFetchRateForForm();
@@ -516,6 +526,82 @@ function renderParticipantChecks(selectedIds) {
       </label>
     `)
     .join("");
+
+  $$("#participantChecks input").forEach((input) => {
+    input.addEventListener("change", () => {
+      renderManualShares(readManualShares());
+      updateShareStatus();
+    });
+  });
+}
+
+function setSplitMode(mode) {
+  $$("input[name='splitMode']").forEach((input) => {
+    input.checked = input.value === mode;
+  });
+}
+
+function getSplitMode() {
+  return $("input[name='splitMode']:checked")?.value || "equal";
+}
+
+function renderManualShares(existingShares = {}) {
+  const isManual = getSplitMode() === "manual";
+  const participantIds = getSelectedParticipantIds();
+  $("#manualShares").hidden = !isManual;
+  if (!isManual) {
+    $("#manualShares").innerHTML = "";
+    return;
+  }
+
+  $("#manualShares").innerHTML = participantIds
+    .map((id) => {
+      const item = findMember(id);
+      const value = existingShares[id] ?? "";
+      return `
+        <div class="share-row">
+          <div class="share-name">${escapeHtml(item?.name || "")}</div>
+          <input type="number" min="0" step="0.01" value="${escapeHtml(value)}" data-share-member="${id}" />
+        </div>
+      `;
+    })
+    .join("");
+
+  $$("[data-share-member]").forEach((input) => {
+    input.addEventListener("input", updateShareStatus);
+  });
+}
+
+function readManualShares() {
+  return Object.fromEntries(
+    $$("[data-share-member]").map((input) => [input.dataset.shareMember, input.value]),
+  );
+}
+
+function getSelectedParticipantIds() {
+  return $$("#participantChecks input:checked").map((input) => input.value);
+}
+
+function updateShareStatus() {
+  const status = $("#shareStatus");
+  if (getSplitMode() !== "manual") {
+    status.textContent = "";
+    status.classList.remove("error");
+    return;
+  }
+
+  const total = Number($("#expenseAmount").value || 0);
+  const sum = sumManualShares();
+  const diff = roundAmount(total - sum);
+  status.classList.toggle("error", Math.abs(diff) >= 0.01);
+  status.textContent =
+    Math.abs(diff) < 0.01
+      ? `합계 ${formatPlainAmount(sum)}`
+      : `수기 합계 ${formatPlainAmount(sum)} · 차이 ${formatPlainAmount(diff)}`;
+}
+
+function sumManualShares() {
+  return $$("[data-share-member]").reduce((sum, input) => sum + Number(input.value || 0), 0);
 }
 
 function onExpenseSubmit(event) {
@@ -524,10 +610,21 @@ function onExpenseSubmit(event) {
     showToast("멤버를 먼저 추가하세요");
     return;
   }
-  const participantIds = $$("#participantChecks input:checked").map((input) => input.value);
+  const participantIds = getSelectedParticipantIds();
   if (!participantIds.length) {
     showToast("나눌 사람을 선택하세요");
     return;
+  }
+  const splitMode = getSplitMode();
+  const shares = splitMode === "manual" ? parseManualShares(participantIds) : {};
+  if (splitMode === "manual") {
+    const amount = Number($("#expenseAmount").value || 0);
+    const sum = Object.values(shares).reduce((total, value) => total + value, 0);
+    if (Math.abs(roundAmount(amount - sum)) >= 0.01) {
+      showToast("수기 금액 합계가 지출 금액과 달라요");
+      updateShareStatus();
+      return;
+    }
   }
 
   const id = $("#expenseId").value || cryptoId();
@@ -542,6 +639,8 @@ function onExpenseSubmit(event) {
     exchangeRateFetchedAt: $("#expenseCurrency").value === state.meta.baseCurrency ? "" : new Date().toISOString(),
     payerId: $("#expensePayer").value,
     participantIds,
+    splitMode,
+    shares,
     note: $("#expenseNote").value.trim(),
     createdAt: state.expenses.find((item) => item.id === id)?.createdAt || Date.now(),
   };
@@ -665,9 +764,44 @@ function roundRate(value) {
   return Math.round(Number(value) * 10000) / 10000;
 }
 
+function parseManualShares(participantIds) {
+  const selected = new Set(participantIds);
+  return Object.fromEntries(
+    $$("[data-share-member]")
+      .filter((input) => selected.has(input.dataset.shareMember))
+      .map((input) => [input.dataset.shareMember, Number(input.value || 0)]),
+  );
+}
+
+function getExpenseSharesKrw(expense, participantIds) {
+  if (expense.splitMode === "manual" && expense.shares) {
+    return participantIds.map((memberId) => ({
+      memberId,
+      amount: amountToKrw(Number(expense.shares[memberId] || 0), expense),
+    }));
+  }
+
+  const share = amountKrw(expense) / participantIds.length;
+  return participantIds.map((memberId) => ({ memberId, amount: share }));
+}
+
 function amountKrw(expense) {
-  if (expense.currency === state.meta.baseCurrency) return Number(expense.amount || 0);
-  return Number(expense.amount || 0) * Number(expense.exchangeRate || state.meta.defaultExchangeRate || 1);
+  return amountToKrw(Number(expense.amount || 0), expense);
+}
+
+function amountToKrw(amount, expense) {
+  if (expense.currency === state.meta.baseCurrency) return amount;
+  return amount * Number(expense.exchangeRate || state.meta.defaultExchangeRate || 1);
+}
+
+function roundAmount(value) {
+  return Math.round(Number(value || 0) * 100) / 100;
+}
+
+function formatPlainAmount(value) {
+  return new Intl.NumberFormat("ko-KR", {
+    maximumFractionDigits: 2,
+  }).format(roundAmount(value));
 }
 
 function findMember(id) {
