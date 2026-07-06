@@ -4,7 +4,7 @@
       "$tripId": {
         ".read": "$tripId.matches(/^[A-Za-z0-9_-]{32,}$/)",
         ".write": "$tripId.matches(/^[A-Za-z0-9_-]{32,}$/)",
-        ".validate": "newData.hasChildren(['meta', 'members', 'expenses']) || !newData.exists()"
+        ".validate": "newData.hasChildren(['meta', 'members']) || !newData.exists()"
       }
     }
   }

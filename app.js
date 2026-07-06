@@ -16,7 +16,8 @@ const storagePrefix = "settle-app:";
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
-let state = createDefaultState();
+let state = createEmptyState();
+let setupDraftMembers = ["", "", "", ""];
 let tripId = getTripId();
 let dbRef = null;
 let dbApi = null;
@@ -24,6 +25,11 @@ let remoteReady = false;
 let toastTimer = null;
 
 const els = {
+  setupScreen: $("#setupScreen"),
+  setupForm: $("#setupForm"),
+  setupTripName: $("#setupTripName"),
+  setupMemberRows: $("#setupMemberRows"),
+  appShell: $("#appShell"),
   tripName: $("#tripName"),
   syncState: $("#syncState"),
   totalSpend: $("#totalSpend"),
@@ -48,37 +54,18 @@ async function init() {
   render();
 }
 
-function createDefaultState() {
-  const members = [
-    member("m1", "이준석", "A 은행", "9775-00-00000", palette[0]),
-    member("m2", "소재현", "B 은행", "1000-0000-0000", palette[1]),
-    member("m3", "윤석준", "C 은행", "0000-0000-0000", palette[2]),
-    member("m4", "김민영", "D 은행", "3333-00-0000000", palette[3]),
-  ];
-
+function createEmptyState() {
   return {
     meta: {
-      name: "당진 정산",
+      name: "",
       baseCurrency: "KRW",
       foreignCurrency: "USD",
       defaultExchangeRate: 1300,
+      setupComplete: false,
       updatedAt: Date.now(),
     },
-    members,
-    expenses: [
-      {
-        id: cryptoId(),
-        date: today(),
-        title: "예시 지출",
-        amount: 50000,
-        currency: "KRW",
-        exchangeRate: 1300,
-        payerId: "m1",
-        participantIds: members.map((item) => item.id),
-        note: "",
-        createdAt: Date.now(),
-      },
-    ],
+    members: [],
+    expenses: [],
     settled: {},
   };
 }
@@ -103,8 +90,7 @@ async function initStorage() {
         if (value) {
           state = normalizeState(value);
         } else {
-          state = createDefaultState();
-          saveState();
+          state = createEmptyState();
         }
         els.syncState.textContent = "Firebase 실시간 동기화";
         render();
@@ -117,16 +103,21 @@ async function initStorage() {
   }
 
   const saved = localStorage.getItem(storageKey());
-  state = saved ? normalizeState(JSON.parse(saved)) : createDefaultState();
+  state = saved ? normalizeState(JSON.parse(saved)) : createEmptyState();
   remoteReady = true;
   els.syncState.textContent = "로컬 저장";
 }
 
 function normalizeState(value) {
+  const members = Array.isArray(value.members) ? value.members : Object.values(value.members || {});
+  const expenses = Array.isArray(value.expenses) ? value.expenses : Object.values(value.expenses || {});
+  const meta = { ...createEmptyState().meta, ...(value.meta || {}) };
+  meta.setupComplete = Boolean(meta.setupComplete || members.length || expenses.length);
+
   return {
-    meta: { ...createDefaultState().meta, ...(value.meta || {}) },
-    members: Array.isArray(value.members) ? value.members : Object.values(value.members || {}),
-    expenses: Array.isArray(value.expenses) ? value.expenses : Object.values(value.expenses || {}),
+    meta,
+    members,
+    expenses,
     settled: value.settled || {},
   };
 }
@@ -141,6 +132,12 @@ function saveState() {
 }
 
 function wireEvents() {
+  els.setupForm.addEventListener("submit", onSetupSubmit);
+  $("#setupAddMemberBtn").addEventListener("click", () => {
+    setupDraftMembers.push("");
+    renderSetupMemberRows();
+  });
+
   $$(".tab").forEach((button) => {
     button.addEventListener("click", () => switchTab(button.dataset.tab));
   });
@@ -183,6 +180,13 @@ function switchTab(tab) {
 }
 
 function render() {
+  if (!state.meta.setupComplete) {
+    renderSetup();
+    return;
+  }
+
+  els.setupScreen.hidden = true;
+  els.appShell.hidden = false;
   const settlement = calculateSettlement();
   els.tripName.value = state.meta.name;
   els.totalSpend.textContent = money(settlement.totalSpend);
@@ -192,6 +196,77 @@ function render() {
   renderTransfers(settlement.transfers);
   renderBalances(settlement.balances);
   renderMembers();
+}
+
+function renderSetup() {
+  els.setupScreen.hidden = false;
+  els.appShell.hidden = true;
+  if (!els.setupTripName.value) {
+    els.setupTripName.value = state.meta.name || "";
+  }
+  if (state.members.length) {
+    setupDraftMembers = state.members.map((item) => item.name);
+  }
+  renderSetupMemberRows();
+}
+
+function renderSetupMemberRows() {
+  els.setupMemberRows.innerHTML = setupDraftMembers
+    .map((name, index) => `
+      <div class="setup-member-row">
+        <div class="setup-member-fields">
+          <input type="text" value="${escapeHtml(name)}" maxlength="20" placeholder="이름" data-setup-member="${index}" />
+        </div>
+        <button class="icon-btn" type="button" data-remove-setup-member="${index}" aria-label="멤버 삭제">×</button>
+      </div>
+    `)
+    .join("");
+
+  $$("[data-setup-member]").forEach((input) => {
+    input.addEventListener("input", () => {
+      setupDraftMembers[Number(input.dataset.setupMember)] = input.value;
+    });
+  });
+
+  $$("[data-remove-setup-member]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (setupDraftMembers.length <= 2) {
+        showToast("멤버는 최소 2명 필요합니다");
+        return;
+      }
+      setupDraftMembers.splice(Number(button.dataset.removeSetupMember), 1);
+      renderSetupMemberRows();
+    });
+  });
+}
+
+function onSetupSubmit(event) {
+  event.preventDefault();
+  const names = $$("[data-setup-member]")
+    .map((input) => input.value.trim())
+    .filter(Boolean);
+  const uniqueNames = [...new Set(names)];
+
+  if (uniqueNames.length < 2) {
+    showToast("멤버를 2명 이상 입력하세요");
+    return;
+  }
+
+  state = {
+    ...createEmptyState(),
+    meta: {
+      ...state.meta,
+      name: els.setupTripName.value.trim() || "새 정산",
+      setupComplete: true,
+      updatedAt: Date.now(),
+    },
+    members: uniqueNames.map((name, index) => member(cryptoId(), name, "", "", palette[index % palette.length])),
+    expenses: [],
+    settled: {},
+  };
+  saveState();
+  render();
+  showToast("정산을 시작했습니다");
 }
 
 function renderExpenses() {
@@ -481,6 +556,10 @@ function onMemberSubmit(event) {
 
 function deleteCurrentMember() {
   const id = $("#memberId").value;
+  if (state.members.length <= 2) {
+    showToast("멤버는 최소 2명 필요합니다");
+    return;
+  }
   const used = state.expenses.some((expense) => expense.payerId === id || expense.participantIds.includes(id));
   if (used) {
     showToast("지출에 사용된 멤버입니다");
