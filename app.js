@@ -22,6 +22,7 @@ let tripId = getTripId();
 let dbRef = null;
 let dbApi = null;
 let remoteReady = false;
+let hasPendingLocalWrite = false;
 let toastTimer = null;
 
 const els = {
@@ -88,7 +89,12 @@ async function initStorage() {
         const value = snapshot.val();
         remoteReady = true;
         if (value) {
+          hasPendingLocalWrite = false;
           state = normalizeState(value);
+        } else if (hasPendingLocalWrite && state.meta.setupComplete) {
+          els.syncState.textContent = "Firebase 저장 확인 중";
+          render();
+          return;
         } else {
           state = createEmptyState();
         }
@@ -110,7 +116,9 @@ async function initStorage() {
 
 function normalizeState(value) {
   const members = Array.isArray(value.members) ? value.members : Object.values(value.members || {});
-  const expenses = Array.isArray(value.expenses) ? value.expenses : Object.values(value.expenses || {});
+  const expenses = (Array.isArray(value.expenses) ? value.expenses : Object.values(value.expenses || {})).filter(
+    (expense) => expense?.id !== "__empty__" && !expense?.hidden,
+  );
   const meta = { ...createEmptyState().meta, ...(value.meta || {}) };
   meta.setupComplete = Boolean(meta.setupComplete || members.length || expenses.length);
 
@@ -125,10 +133,17 @@ function normalizeState(value) {
 function saveState() {
   state.meta.updatedAt = Date.now();
   if (dbRef && dbApi && remoteReady) {
-    return dbApi.set(dbRef, state);
+    return dbApi.set(dbRef, serializeStateForDb(state));
   }
   localStorage.setItem(storageKey(), JSON.stringify(state));
   return Promise.resolve();
+}
+
+function serializeStateForDb(value) {
+  return {
+    ...value,
+    expenses: value.expenses.length ? value.expenses : [{ id: "__empty__", hidden: true }],
+  };
 }
 
 function wireEvents() {
@@ -265,9 +280,14 @@ function onSetupSubmit(event) {
     settled: {},
   };
   render();
+  hasPendingLocalWrite = true;
   Promise.resolve(saveState()).catch((error) => {
     console.error(error);
-    showToast("Firebase 저장을 확인하세요");
+    hasPendingLocalWrite = false;
+    localStorage.setItem(storageKey(), JSON.stringify(state));
+    els.syncState.textContent = "Firebase 저장 실패 · 로컬 저장";
+    render();
+    showToast("Firebase Rules를 확인하세요");
   });
   showToast("정산을 시작했습니다");
 }
