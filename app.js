@@ -361,15 +361,26 @@ function renderTransfers(transfers) {
       const from = findMember(transfer.fromId);
       const to = findMember(transfer.toId);
       const isSettled = Boolean(state.settled[transfer.key]);
+      const toAccount = `${to?.bank || ""} ${to?.account || ""}`.trim();
       return `
         <article class="card transfer-card ${isSettled ? "settled" : ""}">
           <div class="transfer-main">
-            <div class="person-pill">${escapeHtml(from?.name || "")}</div>
+            <div class="transfer-person">
+              <div class="person-pill" style="background:${softColor(from?.color || "#dedbd2")}">
+                <span class="person-dot" style="background:${from?.color || "#dedbd2"}"></span>
+                <span>${escapeHtml(from?.name || "")}</span>
+              </div>
+            </div>
             <div class="arrow">→</div>
-            <div class="person-pill">${escapeHtml(to?.name || "")}</div>
+            <div class="transfer-person">
+              <div class="person-pill" style="background:${softColor(to?.color || "#dedbd2")}">
+                <span class="person-dot" style="background:${to?.color || "#dedbd2"}"></span>
+                <span>${escapeHtml(to?.name || "")}</span>
+              </div>
+              <div class="account-note">${toAccount ? `받는 계좌 · ${escapeHtml(toAccount)}` : "받는 계좌 미입력"}</div>
+            </div>
           </div>
-          <div class="card-row" style="margin-top:12px">
-            <div class="sub">${escapeHtml(to?.bank || "")} ${escapeHtml(to?.account || "")}</div>
+          <div class="transfer-summary">
             <div class="amount">${money(transfer.amount)}</div>
           </div>
           <div class="transfer-actions">
